@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	demoinfocs "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
 	"github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs/common"
@@ -54,8 +55,11 @@ func main() {
 
 	for _, path := range paths {
 		fmt.Printf("Parsing %s\n", path)
+		start := time.Now()
 		game := demoParsing(path)
 		playerStatsMap = append(playerStatsMap, game...)
+		elapsed := time.Since(start)
+		fmt.Printf("Demo took %s\n", elapsed)
 	}
 
 	mergedData := make(map[int64]PlayerStats)
@@ -77,13 +81,8 @@ func main() {
 	for _, value := range mergedData {
 		mergedArray = append(mergedArray, value)
 	}
-	fmt.Println("Merged Array:")
-	for _, item := range mergedArray {
-		fmt.Printf("ID:%d,Name:%s,Rounds:%d,Kills:%d", item.ID, item.Name, item.Rounds, item.Kills)
-	}
 
 	excelExporter(mergedArray)
-
 }
 
 func checkError(err error) {
