@@ -63,9 +63,9 @@ func main() {
 		fmt.Printf("error walking the path %v: %v\n", root, err)
 	}
 
-	fmt.Printf(Blue+"You are parsing %d files.\n"+Reset, len(paths))
-	maxWorkers := 5
-
+	fmt.Printf(Blue+"You are parsing %d files. Estimated time: %d - %d seconds\n"+Reset, len(paths), len(paths)-2, len(paths)+4)
+	maxWorkers := 8
+	overall := time.Now()
 	pathChannel := make(chan string, len(paths))
 	resultChannel := make(chan []PlayerStats, len(paths))
 
@@ -92,7 +92,11 @@ func main() {
 		playerStatsMap = append(playerStatsMap, <-resultChannel...)
 	}
 
-	fmt.Println(Green + "All demos processed!" + Reset)
+	fmt.Println(Green + "\nAll demos processed!" + Reset)
+	fmt.Println()
+
+	elapsed := time.Since(overall)
+	fmt.Printf(Green+"%s took %s\n"+Reset, "Parsing took", elapsed)
 	mergedData := make(map[int64]PlayerStats)
 
 	for _, item := range playerStatsMap {
@@ -113,7 +117,7 @@ func main() {
 		mergedArray = append(mergedArray, value)
 	}
 
-	excelExporter(mergedArray)
+	// excelExporter(mergedArray)
 }
 
 func checkError(err error) {
