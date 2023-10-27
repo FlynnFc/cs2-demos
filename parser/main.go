@@ -39,7 +39,17 @@ type BasicMatchDetails struct {
 
 var paths []string
 
+const (
+	Reset  = "\033[0m"
+	Red    = "\033[31m"
+	Green  = "\033[32m"
+	Yellow = "\033[33m"
+	Blue   = "\033[34m"
+)
+
 func main() {
+	// ANSI escape codes for text colors
+
 	playerStatsMap := []PlayerStats{}
 	var root string
 
@@ -52,17 +62,37 @@ func main() {
 	if err != nil {
 		fmt.Printf("error walking the path %v: %v\n", root, err)
 	}
-	estimated_time := len(paths) * 5
-	fmt.Printf("You are parsing %d files. Estimated time: %d seconds\n", len(paths), estimated_time)
-	for _, path := range paths {
-		fmt.Printf("Parsing %s\n", path)
-		start := time.Now()
-		game := demoParsing(path)
-		playerStatsMap = append(playerStatsMap, game...)
-		elapsed := time.Since(start)
-		fmt.Printf("Demo took %s\n", elapsed)
+
+	fmt.Printf(Blue+"You are parsing %d files.\n"+Reset, len(paths))
+	maxWorkers := 5
+
+	pathChannel := make(chan string, len(paths))
+	resultChannel := make(chan []PlayerStats, len(paths))
+
+	for i := 0; i < maxWorkers; i++ {
+		go func() {
+			for path := range pathChannel {
+				fmt.Printf(Yellow+"Parsing %s\n"+Reset, path)
+				start := time.Now()
+				game := demoParsing(path)
+				elapsed := time.Since(start)
+				fmt.Printf(Green+"%s took %s\n"+Reset, path, elapsed)
+				resultChannel <- game
+			}
+		}()
 	}
 
+	for _, path := range paths {
+		pathChannel <- path
+	}
+
+	close(pathChannel)
+
+	for i := 0; i < len(paths); i++ {
+		playerStatsMap = append(playerStatsMap, <-resultChannel...)
+	}
+
+	fmt.Println(Green + "All demos processed!" + Reset)
 	mergedData := make(map[int64]PlayerStats)
 
 	for _, item := range playerStatsMap {
@@ -99,7 +129,7 @@ func playerStatsCalc(player *common.Player, totalRounds int) PlayerStats {
 }
 
 func excelExporter(allPlayers []PlayerStats) {
-	fmt.Println("Building spreadsheet")
+	fmt.Println(Yellow + "Building spreadsheet..." + Reset)
 	file := xlsx.NewFile()
 	sheet, err := file.AddSheet("Basicstats")
 	checkError(err)
@@ -127,6 +157,7 @@ func excelExporter(allPlayers []PlayerStats) {
 
 	err = file.Save("epicstats.xlsx")
 	checkError(err)
+	fmt.Println(Green + "Spreadsheet done" + Reset)
 }
 
 func demoParsing(path string) []PlayerStats {
