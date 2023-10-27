@@ -38,11 +38,11 @@ type BasicMatchDetails struct {
 
 var paths []string
 
-// Run like this: go run heatmap.go -demo /path/to/demo.dem > out.jpg
 func main() {
 	playerStatsMap := []PlayerStats{}
 	var root string
 
+	//User enters path of folder
 	fmt.Print("Please enter the path for the demo folder: ")
 	fmt.Scan(&root)
 	fmt.Println("Path=", root)
@@ -62,8 +62,6 @@ func main() {
 
 	for _, item := range playerStatsMap {
 		if existing, found := mergedData[item.ID]; found {
-			// If the item is a duplicate, merge the data
-			// You can customize this merge logic as per your data structure
 			var newRounds = existing.Rounds + item.Rounds
 			var newKills = existing.Kills + item.Kills
 			var newDeaths = existing.Deaths + item.Deaths
@@ -74,8 +72,6 @@ func main() {
 			mergedData[item.ID] = item
 		}
 	}
-
-	// Convert the map back to an array
 
 	mergedArray := make([]PlayerStats, 0, len(mergedData))
 	for _, value := range mergedData {
@@ -126,7 +122,7 @@ func excelExporter(allPlayers []PlayerStats) {
 		row.AddCell().SetInt(player.Rounds)
 		row.AddCell().SetInt(player.Kills)
 		row.AddCell().SetInt(player.Deaths)
-		row.AddCell().SetFloat(float64(player.Damage)) // Adjust the number of decimal places as needed // Adjust the number of decimal places as needed
+		row.AddCell().SetFloat(float64(player.Damage))
 	}
 
 	err = file.Save("epicstats.xlsx")
