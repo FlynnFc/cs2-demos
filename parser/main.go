@@ -52,7 +52,8 @@ func main() {
 	if err != nil {
 		fmt.Printf("error walking the path %v: %v\n", root, err)
 	}
-
+	estimated_time := len(paths) * 5
+	fmt.Printf("You are parsing %d files. Estimated time: %d seconds\n", len(paths), estimated_time)
 	for _, path := range paths {
 		fmt.Printf("Parsing %s\n", path)
 		start := time.Now()
