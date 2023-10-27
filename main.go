@@ -116,8 +116,7 @@ func main() {
 	for _, value := range mergedData {
 		mergedArray = append(mergedArray, value)
 	}
-
-	// excelExporter(mergedArray)
+	excelExporter(mergedArray)
 }
 
 func checkError(err error) {
