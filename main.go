@@ -99,10 +99,10 @@ func main() {
 	fmt.Println()
 
 	elapsed := time.Since(overall)
-	if !len(failed) {
-		fmt.Printf(Red+"%d out of %d demos were invalid and were ignored.\n"+Reset, len(failed), len(paths
+
+	if len(failed) > 1 {
+		fmt.Printf(Red+"%d out of %d demos were invalid and were ignored.\n"+Reset, len(failed), len(paths))
 	}
-))
 	fmt.Printf(Green+"Parsing %d demos took %s\n"+Reset, len(paths)-len(failed), elapsed)
 	mergedData := make(map[uint64]PlayerStats)
 

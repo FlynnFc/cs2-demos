@@ -1,8 +1,7 @@
 module main
 
-go 1.21
+go 1.21.3
 
-toolchain go1.21.3
 
 require github.com/markus-wa/demoinfocs-golang/v4 v4.0.0-beta.5
 
