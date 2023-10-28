@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	demoinfocs "github.com/markus-wa/demoinfocs-golang/v4/pkg/demoinfocs"
@@ -23,12 +24,13 @@ type TeamDetails struct {
 }
 
 type PlayerStats struct {
-	ID     int64
-	Name   string `json:"name"`
-	Rounds int
-	Kills  int `json:"kills"`
-	Deaths int `json:"deaths"`
-	Damage int
+	ID      uint64
+	Name    string `json:"name"`
+	Rounds  int
+	Matches int
+	Kills   int `json:"kills"`
+	Deaths  int `json:"deaths"`
+	Damage  int
 }
 
 type BasicMatchDetails struct {
@@ -38,6 +40,7 @@ type BasicMatchDetails struct {
 }
 
 var paths []string
+var failed []string
 
 const (
 	Reset  = "\033[0m"
@@ -64,7 +67,7 @@ func main() {
 	}
 
 	fmt.Printf(Blue+"You are parsing %d files. Estimated time: %d - %d seconds\n"+Reset, len(paths), len(paths)-2, len(paths)+4)
-	maxWorkers := 8
+	maxWorkers := 10
 	overall := time.Now()
 	pathChannel := make(chan string, len(paths))
 	resultChannel := make(chan []PlayerStats, len(paths))
@@ -96,8 +99,9 @@ func main() {
 	fmt.Println()
 
 	elapsed := time.Since(overall)
-	fmt.Printf(Green+"%s took %s\n"+Reset, "Parsing took", elapsed)
-	mergedData := make(map[int64]PlayerStats)
+	fmt.Printf(Red+"%d out of %d demos were invalid and were ignored.\n"+Reset, len(failed), len(paths))
+	fmt.Printf(Green+"Parsing %d demos took %s\n"+Reset, len(paths)-len(failed), elapsed)
+	mergedData := make(map[uint64]PlayerStats)
 
 	for _, item := range playerStatsMap {
 		if existing, found := mergedData[item.ID]; found {
@@ -105,7 +109,8 @@ func main() {
 			var newKills = existing.Kills + item.Kills
 			var newDeaths = existing.Deaths + item.Deaths
 			var newDamage = existing.Damage + item.Damage
-			mergedData[item.ID] = PlayerStats{Rounds: newRounds, Kills: newKills, Deaths: newDeaths, Damage: newDamage, Name: existing.Name, ID: existing.ID}
+			var matchesPlayed = existing.Matches + item.Matches
+			mergedData[item.ID] = PlayerStats{Rounds: newRounds, Kills: newKills, Deaths: newDeaths, Damage: newDamage, Name: existing.Name, ID: existing.ID, Matches: matchesPlayed}
 		} else {
 			// If the item is not a duplicate, add it to the map
 			mergedData[item.ID] = item
@@ -126,8 +131,7 @@ func checkError(err error) {
 }
 
 func playerStatsCalc(player *common.Player, totalRounds int) PlayerStats {
-	var id = int64(player.SteamID64)
-	var output = PlayerStats{ID: id, Name: player.Name, Rounds: totalRounds, Kills: player.Kills(), Deaths: player.Deaths(), Damage: player.TotalDamage()}
+	var output = PlayerStats{ID: player.SteamID64, Name: player.Name, Rounds: totalRounds, Kills: player.Kills(), Deaths: player.Deaths(), Damage: player.TotalDamage(), Matches: 1}
 	return output
 }
 
@@ -143,15 +147,18 @@ func excelExporter(allPlayers []PlayerStats) {
 	headerRow := sheet.AddRow()
 	headerRow.AddCell().Value = "ID"
 	headerRow.AddCell().Value = "Name"
+	headerRow.AddCell().Value = "Matches"
 	headerRow.AddCell().Value = "Rounds"
 	headerRow.AddCell().Value = "Kills"
 	headerRow.AddCell().Value = "Deaths"
 	headerRow.AddCell().Value = "Damage"
 
 	for _, player := range allPlayers {
+		var id = strconv.FormatUint(player.ID, 10)
 		row := sheet.AddRow()
-		row.AddCell().SetInt64(player.ID)
+		row.AddCell().SetString(id)
 		row.AddCell().SetString(player.Name)
+		row.AddCell().SetInt(player.Matches)
 		row.AddCell().SetInt(player.Rounds)
 		row.AddCell().SetInt(player.Kills)
 		row.AddCell().SetInt(player.Deaths)
@@ -180,6 +187,13 @@ func demoParsing(path string) []PlayerStats {
 
 		totalRounds := score.CT + score.T
 
+		if score.CT < 12 && score.T < 12 {
+			//Not 1 half has been completed so match is likely void
+			failed = append(failed, path)
+			fmt.Printf(Red+"Demo %s not valid. Too few rounds player\n"+Reset, path)
+			return
+		}
+
 		for _, player := range allPlayers {
 			stats := playerStatsCalc(player, totalRounds)
 			output = append(output, stats)
@@ -190,7 +204,10 @@ func demoParsing(path string) []PlayerStats {
 	// Parse the whole demo
 	err = p.ParseToEnd()
 
-	checkError(err)
+	if err != nil {
+		failed = append(failed, path)
+		return output
+	}
 	return output
 }
 
