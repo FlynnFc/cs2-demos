@@ -41,6 +41,7 @@ type BasicMatchDetails struct {
 
 var paths []string
 var failed []string
+var kills []events.Kill
 
 const (
 	Reset  = "\033[0m"
@@ -168,6 +169,28 @@ func excelExporter(allPlayers []PlayerStats) {
 		row.AddCell().SetFloat(float64(player.Damage))
 	}
 
+	sheet, err = file.AddSheet("Kills")
+
+	headerRow = sheet.AddRow()
+	headerRow.AddCell().Value = "steamid"
+	headerRow.AddCell().Value = "Killer"
+	headerRow.AddCell().Value = "Assiter"
+	headerRow.AddCell().Value = "Victim"
+	headerRow.AddCell().Value = "Weapon"
+
+	for _, kill := range kills {
+		assiter := ""
+		if kill.Assister != nil {
+			assiter = kill.Assister.String()
+		}
+		row := sheet.AddRow()
+		row.AddCell().SetString(string(rune(kill.Killer.SteamID64)))
+		row.AddCell().SetString(kill.Killer.String())
+		row.AddCell().SetString(assiter)
+		row.AddCell().SetString(kill.Victim.String())
+		row.AddCell().SetString(kill.Weapon.String())
+	}
+
 	err = file.Save("epicstats.xlsx")
 	checkError(err)
 	fmt.Println(Green + "Spreadsheet done" + Reset)
@@ -181,6 +204,10 @@ func demoParsing(path string) []PlayerStats {
 	output := []PlayerStats{}
 	p := demoinfocs.NewParser(f)
 	defer p.Close()
+
+	p.RegisterEventHandler(func(e events.Kill) {
+		kills = append(kills, e)
+	})
 
 	//Game ended
 	p.RegisterEventHandler(func(e events.AnnouncementWinPanelMatch) {
@@ -209,7 +236,7 @@ func demoParsing(path string) []PlayerStats {
 
 	if err != nil {
 		failed = append(failed, path)
-		return output
+		return nil
 	}
 	return output
 }
